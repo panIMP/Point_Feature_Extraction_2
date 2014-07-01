@@ -49,8 +49,14 @@ int height
 );
 
 
-
-// The 
+/*The 6 unknown coefficients for projection matrix*/
+/*
+	|	m0	m1	m2	|		|	x	|		|	x^	|
+	|				|		|		|		|		|
+	|	m3	m4	m5	|	*	| 	y	|	= 	|	y^	|
+	|				|		|		|		|		|
+	|	0	0	1	|		|	1	|		|	1	|
+*/
 typedef struct _PROJECT_MATRIX
 {
 	double m0;
@@ -62,9 +68,18 @@ typedef struct _PROJECT_MATRIX
 }projMat;
 
 
-/*Calculate the ou - distance between two feat*/
-double
-calcHuFeatDistance(huFeat* featL, huFeat* featR);
+namespace PFE
+{
+	enum MATCH_METHOD
+	{
+		EUDIST = 1,
+		CORRILATION,
+	};
+}
+
+
+/*Get the nearest point for the given point(point to match)*/
+bool getNearestPoint(const huFeat* feat2match, huFeat* feats, int featNum, int& matchSeq, PFE::MATCH_METHOD method);
 
 
 /*Add the matched pair to the couple*/
@@ -74,7 +89,7 @@ addHuNewPair(MatchCouple* couple, huFeat* featL, huFeat* featR);
 
 /*match the hu-moment feat*/
 int
-matchHu(std::pair<huFeat*, huFeat*>feats, std::pair<int, int> pointNum, pMatchCouple couples);
+matchHu(std::pair<huFeat*, huFeat*>featsPair, std::pair<int, int> pointNumPair, pMatchCouple couples);
 
 
 /*get hu-moment feat and match them*/
@@ -82,11 +97,11 @@ int matchByHuMatrix
 (
 std::pair<unsigned char*, unsigned char*> imgPair,
 std::pair<unsigned char*, unsigned char*> imgMarkPair,
-std::pair<int, int> pointNum,
+std::pair<int, int> pointNumPair,
+std::pair<int, int> imgWidthPair,
+std::pair<int, int> imgHeightPair,
 pMatchCouple* couples,
-int window,
-int width,
-int height
+int window
 );
 
 

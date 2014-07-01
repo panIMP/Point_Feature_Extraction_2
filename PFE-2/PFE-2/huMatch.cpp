@@ -22,6 +22,7 @@ int height
 
 	double* imgTmp = (double*)calloc_check(fullSize, sizeof(double));
 
+	// create integral images
 	int seq = 0;
 	for (int xOrder = 0; xOrder <= 3; ++xOrder)
 	{
@@ -110,7 +111,7 @@ int height
 			int pLB = (y + dist + 1) * widthInt + x - dist;
 			int pRB = (y + dist + 1) * widthInt + x + dist + 1;
 
-			// calculate n moments
+			// calculate n moments, f(x,y), x*f(x,y), y*f(x,y), x*x*f(x,y).....
 			double m00 = imgIntX0Y0Ptr[pRB] - imgIntX0Y0Ptr[pLB] - imgIntX0Y0Ptr[pRT] + imgIntX0Y0Ptr[pLT];
 			double m10 = imgIntX1Y0Ptr[pRB] - imgIntX1Y0Ptr[pLB] - imgIntX1Y0Ptr[pRT] + imgIntX1Y0Ptr[pLT];
 			double m01 = imgIntX0Y1Ptr[pRB] - imgIntX0Y1Ptr[pLB] - imgIntX0Y1Ptr[pRT] + imgIntX0Y1Ptr[pLT];
@@ -136,16 +137,20 @@ int height
 			double u03 = m03 - 3 * yE * m02 + 3 * yE * yE * m01 - yE * yE * yE * m00;
 
 			// calculate n11, n12, n21, ...
-			double u00sqrt = sqrt(u00);
-			double u00square = u00 * u00;
+			double u001_2 = sqrt(u00);
+			double u002 = u00 * u00;
+			double u005_2 = u002 * u001_2;
+			
 			double n00 = u00;
-			double n20 = u20 / u00square;
-			double n02 = u02 / u00square;
-			double n11 = u11 / u00square;
-			double n30 = u30 / (u00square * u00sqrt);
-			double n21 = u21 / (u00square * u00sqrt);
-			double n12 = u12 / (u00square * u00sqrt);
-			double n03 = u03 / (u00square * u00sqrt);
+
+			// 7 n
+			double n20 = u20 / u002;
+			double n02 = u02 / u002;
+			double n11 = u11 / u002;
+			double n30 = u30 / (u002 * u001_2);
+			double n21 = u21 / (u002 * u001_2);
+			double n12 = u12 / (u002 * u001_2);
+			double n03 = u03 / (u002 * u001_2);
 
 			// calculte hu-moments: M1, M2, M3, ...
 			double M1 = n20;
@@ -156,13 +161,21 @@ int height
 			double M6 = n12;
 			double M7 = n03;
 
-			//M1 = n20 + n02;
-			//M2 = pow(n20 - n02, 2) + 4 * n11 * n11;
-			//M3 = pow(n30 - 3 * n12, 2) + pow(3 * n21 - n03, 2);
-			//M4 = pow(n30 + n12, 2) + pow(n21 + n03, 2);
-			//M5 = (n30 - 3 * n12)*(n30 + n12)*(pow(n30 + n12, 2) - 3 * pow(n21 + n03, 2)) + (3 * n21 - n03)*(n21 + n03)*(3 * pow(n12 + n30, 2) - pow(n21 + n03, 2));
-			//M6 = (n20 - n02)*(pow(n30 + n12, 2) - pow(n21 + n03, 2)) + 4 * n11 * (n30 + n12) * (n21 + n03);
-			//M7 = (3 * n21 - n03) * (n30 + n12) * (pow(n30 + n12, 2) - 3 * pow(n21 + n03, 2)) - (n30 - 3 * n12) * (n21 + n03) * (3 * pow(n30 + n12, 2) - pow(n21 + n03, 2));
+			/*M1 = n20 + n02;
+			M2 = pow(n20 - n02, 2) + 4 * n11 * n11;
+			M3 = pow(n30 - 3 * n12, 2) + pow(3 * n21 - n03, 2);
+			M4 = pow(n30 + n12, 2) + pow(n21 + n03, 2);
+			M5 = (n30 - 3 * n12)*(n30 + n12)*(pow(n30 + n12, 2) - 3 * pow(n21 + n03, 2)) + (3 * n21 - n03)*(n21 + n03)*(3 * pow(n12 + n30, 2) - pow(n21 + n03, 2));
+			M6 = (n20 - n02)*(pow(n30 + n12, 2) - pow(n21 + n03, 2)) + 4 * n11 * (n30 + n12) * (n21 + n03);
+			M7 = (3 * n21 - n03) * (n30 + n12) * (pow(n30 + n12, 2) - 3 * pow(n21 + n03, 2)) - (n30 - 3 * n12) * (n21 + n03) * (3 * pow(n30 + n12, 2) - pow(n21 + n03, 2));*/
+
+			M1 = log10(M1);
+			M2 = log10(M2);
+			M3 = log10(abs(M3));
+			M4 = log10(abs(M4));
+			M5 = log10(abs(M5));
+			M6 = log10(abs(M6));
+			M7 = log10(abs(M7));
 
 			// store the feature 
 			huMoment moment = { M1, M2, M3, M4, M5, M6, M7 };
@@ -183,21 +196,45 @@ int height
 
 
 
-/*Calculate the ou - distance between two feat*/
-double 
-calcHuFeatDistance(huFeat* featL, huFeat* featR)
+/*Get the nearest point for the given point(point to match)*/
+bool getNearestPoint(const huFeat* feat2match, huFeat* feats, int featNum, int& matchSeq, PFE::MATCH_METHOD method)
 {
-	double dist = 0.0;
+	// Flag to indicate whether a match point has been found
+	bool foundFlag = false;
 
-	dist += pow(featL->moment.m1 - featR->moment.m1, 2);
-	dist += pow(featL->moment.m2 - featR->moment.m2, 2);
-	//dist += pow(featL->moment.m3 - featR->moment.m3, 2);
-	//dist += pow(featL->moment.m4 - featR->moment.m4, 2);
-	//dist += pow(featL->moment.m5 - featR->moment.m5, 2);
-	//dist += pow(featL->moment.m6 - featR->moment.m6, 2);
-	//dist += pow(featL->moment.m7 - featR->moment.m7, 2);
+	// If use the Euclidean distance to evaluelate the similarity between 2 huFeat
+	if (method == PFE::EUDIST)
+	{
+		// init the minimun distance
+		double minFeatDist = 1E20;
+		for (int j = 0; j < featNum; ++j)
+		{
+			double featDist = 0;
 
-	return dist;
+			// Calculate the distance
+			featDist += pow(feat2match->moment.m1 - (feats + j)->moment.m1, 2);
+			featDist += pow(feat2match->moment.m2 - (feats + j)->moment.m2, 2);
+			featDist += pow(feat2match->moment.m3 - (feats + j)->moment.m3, 2);
+			featDist += pow(feat2match->moment.m4 - (feats + j)->moment.m4, 2);
+			featDist += pow(feat2match->moment.m5 - (feats + j)->moment.m5, 2);
+			featDist += pow(feat2match->moment.m6 - (feats + j)->moment.m6, 2);
+			featDist += pow(feat2match->moment.m7 - (feats + j)->moment.m7, 2);
+
+			if (featDist < minFeatDist)
+			{
+				minFeatDist = featDist;
+				matchSeq = j;
+				foundFlag = true;
+			}
+		}
+	}
+
+	if (method == PFE::CORRILATION)
+	{
+
+	}
+
+	return foundFlag;
 }
 
 
@@ -218,18 +255,15 @@ addHuNewPair(MatchCouple* couple, huFeat* featL, huFeat* featR)
 
 /*match the hu-moment feat*/
 int
-matchHu(std::pair<huFeat*, huFeat*>feats, std::pair<int, int> pointNum, pMatchCouple couples)
+matchHu(std::pair<huFeat*, huFeat*>featsPair, std::pair<int, int> pointNumPair, pMatchCouple couples)
 {
-	huFeat* featsL = feats.first;
-	huFeat* featsR = feats.second;
-	int pointNumL = pointNum.first;
-	int pointNumR = pointNum.second;
+	huFeat* featsL = featsPair.first;
+	huFeat* featsR = featsPair.second;
+	int pointNumL = pointNumPair.first;
+	int pointNumR = pointNumPair.second;
 
 	// set the mininum of the two as matchNum
 	int matchNum = 0;
-
-	// set maxDist;
-	double minFeatDist = 1E20;
 
 	// set record matched j of the right image
 	int matchJ = 0;
@@ -239,30 +273,12 @@ matchHu(std::pair<huFeat*, huFeat*>feats, std::pair<int, int> pointNum, pMatchCo
 	for (int i = 0; i < pointNumL; ++i)
 	{
 		// find the point(matchJ) int the right image that is nearest to the i in the left
-		for (int j = 0; j < pointNumR; ++j)
-		{
-			double featDist = calcHuFeatDistance(featsL + i, featsR + j);
-			if (featDist < minFeatDist)
-			{
-				minFeatDist = featDist;
-				matchJ = j;
-			}
-		}
+		if (!getNearestPoint(featsL + i, featsR, pointNumR, matchJ, PFE::EUDIST))
+			continue;
 
 		// reverse find -- find if i is the nearest for matchJ in the left image
-		
-		matchI = i;
-		for (int newI = 0; newI < pointNumL; ++newI)
-		{
-			double featDist = calcHuFeatDistance(featsL + newI, featsR + matchJ);
-
-			// minFeatDist is recorded from above
-			if (featDist < minFeatDist)
-			{
-				minFeatDist = featDist;
-				matchI = newI;
-			}
-		}
+		if (!getNearestPoint(featsR + matchJ, featsL, pointNumL, matchI, PFE::EUDIST))
+			continue;
 
 		// if (i, matchJ) == (matchI, matchJ), then the two points are coupled
 		if (matchI == i)
@@ -273,7 +289,7 @@ matchHu(std::pair<huFeat*, huFeat*>feats, std::pair<int, int> pointNum, pMatchCo
 		}
 
 		// reset those compare variables for another point in left image
-		minFeatDist = 1E20;
+		matchI = 0;
 		matchJ = 0;
 	}
 
@@ -281,11 +297,11 @@ matchHu(std::pair<huFeat*, huFeat*>feats, std::pair<int, int> pointNum, pMatchCo
 
 
 	// Step 2. use ransac to modify the first match
+	// get the projection mat
 	couples -= matchNum;
 	projMat mat = ransac(couples, matchNum, 25);
 
-
-	// Step 3. use the projection matrix to rectify the couples
+	// use the projection matrix to rectify the couples
 	for (int cpIterate = 0; cpIterate < matchNum; ++cpIterate)
 	{
 		pMatchCouple cp = couples + cpIterate;
@@ -322,6 +338,7 @@ ransac(pMatchCouple couples, int matchNum, double distThresh)
 	for (int i = 0; i < matchNum; ++i)
 		sequ[i] = i;
 	
+	srand(matchNum);
 	for (int i = matchNum - 1; i >= 1; --i)
 	{
 		int j = rand() % i;
@@ -348,17 +365,16 @@ ransac(pMatchCouple couples, int matchNum, double distThresh)
 
 		// Calculate the coefficients based on the 3 couples -- opencv functions are used
 		matA = (cv::Mat_<double>(3, 3) << cp0.Lx, cp0.Ly, 1, cp1.Lx, cp1.Ly, 1, cp2.Lx, cp2.Ly, 1);
-		matB = (cv::Mat_<double>(3, 1) << cp0.Rx, cp1.Rx, cp2.Rx);
-		mat012 = cv::Mat_<double>(3, 1);
 
 		// if m0, m1, m2 are solved successfully
+		matB = (cv::Mat_<double>(3, 1) << cp0.Rx, cp1.Rx, cp2.Rx);
+		mat012 = cv::Mat_<double>(3, 1);
 		if (!cv::solve(matA, matB, mat012, cv::DECOMP_NORMAL | cv::DECOMP_SVD))
 			continue;
 
+		// if m3, m4, m5 are solved successfully
 		matB = (cv::Mat_<double>(3, 1) << cp0.Ry, cp1.Ry, cp2.Ry);
 		mat345 = cv::Mat_<double>(3, 1);
-
-		// if m3, m4, m5 are solved successfully
 		if (!cv::solve(matA, matB, mat345, cv::DECOMP_NORMAL | cv::DECOMP_SVD))
 			continue;
 
@@ -419,34 +435,38 @@ int matchByHuMatrix
 (
 std::pair<unsigned char*, unsigned char*> imgPair,
 std::pair<unsigned char*, unsigned char*> imgMarkPair,
-std::pair<int, int> pointNum,
+std::pair<int, int> pointNumPair,
+std::pair<int, int> imgWidthPair,
+std::pair<int, int> imgHeightPair,
 pMatchCouple* couples,
-int window,
-int width,
-int height
+int window
 )
 {
-	unsigned char* leftImg = imgPair.first;
-	unsigned char* rightImg = imgPair.second;
-	unsigned char* leftImgMark = imgMarkPair.first;
-	unsigned char* rightImgMark = imgMarkPair.second;
-	int leftPointNum = pointNum.first;
-	int rightPointNum = pointNum.second;
+	// Parse pairs
+	unsigned char* imgL = imgPair.first;
+	unsigned char* imgR = imgPair.second;
+	unsigned char* imgMarkL = imgMarkPair.first;
+	unsigned char* imgMarkR = imgMarkPair.second;
+	int pointNumL = pointNumPair.first;
+	int pointNumR = pointNumPair.second;
+	int widthL = imgWidthPair.first;
+	int widthR = imgWidthPair.second;
+	int heightL = imgHeightPair.first;
+	int heightR = imgHeightPair.second;
 
 	// get feature
-	huFeat* featsL = (huFeat*)calloc_check(leftPointNum, sizeof(huFeat));
-	int actLeftPointNum = getHuMoments(leftImg, leftImgMark, featsL, window, width, height);
-
-	huFeat* featsR = (huFeat*)calloc_check(rightPointNum, sizeof(huFeat));
-	int actRightPointNum = getHuMoments(rightImg, rightImgMark, featsR, window, width, height);
+	huFeat* featsL = (huFeat*)calloc_check(pointNumL, sizeof(huFeat));
+	int actPointNumL = getHuMoments(imgL, imgMarkL, featsL, window, widthL, heightL);
+	huFeat* featsR = (huFeat*)calloc_check(pointNumR, sizeof(huFeat));
+	int actPointNumR = getHuMoments(imgR, imgMarkR, featsR, window, widthR, heightR);
 	
 	// make feature pair and feature point pair
 	std::pair<huFeat*, huFeat*> feats = std::make_pair(featsL, featsR);
-	std::pair<int, int> actPointNum = std::make_pair(actLeftPointNum, actRightPointNum);
+	std::pair<int, int> actPointNumPair = std::make_pair(actPointNumL, actPointNumR);
 
 	// match
-	*couples = (pMatchCouple)calloc_check(MIN(actLeftPointNum, actRightPointNum), sizeof(MatchCouple));
-	int matchNum = matchHu(feats, actPointNum, *couples);
+	*couples = (pMatchCouple)calloc_check(MIN(actPointNumL, actPointNumR), sizeof(MatchCouple));
+	int matchNum = matchHu(feats, actPointNumPair, *couples);
 	
 
 	return matchNum;

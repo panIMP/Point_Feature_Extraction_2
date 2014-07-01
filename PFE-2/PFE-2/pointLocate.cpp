@@ -326,40 +326,56 @@ int width,
 int height
 )
 {
+	// Matrix A, B, and result.
 	double* A = (double*)calloc_check(9, sizeof(double));
 	double* B = (double*)calloc_check(3, sizeof(double));
 	double* result = (double*)calloc_check(3, sizeof(double));
 	int imgSize = width * height;
 
+	// Iterate over the different octaves
 	for (int oct = 0; oct < octaveNum; ++oct)
 	{
+		// Iterate over the layers
 		for (int lay = 1; lay < layerNum - 1; ++lay)
 		{
+			// init the pointer for neighbour three layer
 			double* imgMid = imgHesPyr + oct * layerNum * width * height + lay * width * height;
 			double* imgUp = imgMid - width*height;
 			double* imgDown = imgMid + width*height;
 
+			// init the start position of the template
 			int startPos = oct * layerNum * 3 * 26 + lay * 3 * 26;
 
+			// init the pixel start coordinates
 			int xStart = (hesTempl[startPos + 7] + hesTempl[startPos + 9]) / 2;
 			int yStart = (hesTempl[startPos + 8] + hesTempl[startPos + 10]) / 2;
 
+			// if calculate the neighbouring pixels like this
+			//			*														
+			//		*	*	*											*	*	*
+			//	*	*	*	*	*	(_CIRCLR_NEIGHBOUR = 1)		OR		*	*	*	(_CIRCLR_NEIGHBOUR = 0)
+			//		*	*	*											*	*	*
+			//			*														
 #if _CIRCLR_NEIGHBOUR
 			xStart++;
 			yStart++;
 #endif
-
+			// init the pixel ending coordinates
 			int xEnd = width - xStart;
 			int yEnd = height - yStart;
 
-
+			// iterate over the hessin images, 3 neighbouring images sequently
 			for (int y = yStart; y < yEnd; ++y)
 			{
+				// the three index of each image of neighbouring rows, upper line, middle line, below line
 				int firstLine = (y - 1) * width + xStart;
 				int secondLine = y * width + xStart;
 				int thirdLine = (y + 1) * width + xStart;
+
+				// iterate over each row
 				for (int x = xStart; x < xEnd; ++x, ++firstLine, ++secondLine, ++thirdLine)
 				{
+					// pixel value of the upper image
 					double pUp00 = imgUp[firstLine - 1];
 					double pUp01 = imgUp[firstLine];
 					double pUp02 = imgUp[firstLine + 1];
@@ -370,7 +386,7 @@ int height
 					double pUp21 = imgUp[thirdLine];
 					double pUp22 = imgUp[thirdLine + 1];
 
-
+					// pixel value of the middle image
 					double pMid00 = imgMid[firstLine - 1];
 					double pMid01 = imgMid[firstLine];
 					double pMid02 = imgMid[firstLine + 1];
@@ -381,6 +397,7 @@ int height
 					double pMid21 = imgMid[thirdLine];
 					double pMid22 = imgMid[thirdLine + 1];
 
+					// pixel value of the down image
 					double pDown00 = imgDown[firstLine - 1];
 					double pDown01 = imgDown[firstLine];
 					double pDown02 = imgDown[firstLine + 1];
@@ -391,8 +408,10 @@ int height
 					double pDown21 = imgDown[thirdLine];
 					double pDown22 = imgDown[thirdLine + 1];
 
-					// extra points around the 8-neighbour
+					// if calculate the neighbouring pixels in the first way,
 #if _CIRCLR_NEIGHBOUR
+					// extra points around the 8-neighbour should be calculated
+					// Up_11 (-1, 1), Up1_1(1, -1), Up13(1, 3), Up31(3, 1)...
 					double pUp_11 = imgUp[firstLine - width];
 					double pUp1_1 = imgUp[secondLine - 2];
 					double pUp13 = imgUp[secondLine + 2];
@@ -408,18 +427,21 @@ int height
 					double pDown13 = imgDown[secondLine + 2];
 					double pDown31 = imgDown[thirdLine + width];
 
+					// if current center pixel value is the maxima -- the center pixel is regarded as an interest point!
 					if ((pMid11 > pMid00) && (pMid11 > pMid01) && (pMid11 > pMid02) && (pMid11 > pMid10)
 						&& (pMid11 > pMid12) && (pMid11 > pMid20) && (pMid11 > pMid21) && (pMid11 > pMid22)
 						&& (pMid11 > pUp00) && (pMid11 > pUp01) && (pMid11 > pUp02) && (pMid11 > pUp10)
 						&& (pMid11 > pUp11) && (pMid11 > pUp12) && (pMid11 > pUp20) && (pMid11 > pUp21) && (pMid11 > pUp22)
 						&& (pMid11 > pDown00) && (pMid11 > pDown01) && (pMid11 > pDown02) && (pMid11 > pDown10) 
-						&& (pMid11 > pDown11) && (pMid11 > pDown12) && (pMid11 > pDown20) && (pMid11 > pDown21) 
-						&& (pMid11 > pDown22)
+						&& (pMid11 > pDown11) && (pMid11 > pDown12) && (pMid11 > pDown20) && (pMid11 > pDown21) && (pMid11 > pDown22)
 						&& (pMid11 > pUp_11) && (pMid11 > pUp1_1) && (pMid11 > pUp13) && (pMid11 > pUp31) 
 						&& (pMid11 > pMid_11) && (pMid11 > pMid1_1) && (pMid11 > pMid13) && (pMid11 > pMid31) 
 						&&(pMid11 > pDown_11) && (pMid11 > pDown1_1) && (pMid11 > pDown13) && (pMid11 > pDown31))
 					{
-						/*A[0] = pMid10 + pMid12 - 2 * pMid11;
+						// if you wanna to locate the interest point more precisely, input efficients and solve the following equation
+#if _LOCATE_REFINE
+						// form the efficients, A * X  = B, (A, X, B are all matrixs)
+						A[0] = pMid10 + pMid12 - 2 * pMid11;
 						A[1] = (pMid00 + pMid22 - pMid02 - pMid20) / 4;
 						A[2] = (pUp10 + pDown12 - pUp12 - pDown10) / 4;
 						A[3] = A[1];
@@ -433,35 +455,13 @@ int height
 						B[1] = -(pMid21 - pMid01) / 2;
 						B[2] = -(pDown11 - pUp11) / 2;
 
-						cv::Mat matA = (cv::Mat_<double>(3, 3) << A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7], A[8]);
-						cv::Mat matB = (cv::Mat_<double>(3, 1) << B[0], B[1], B[2]);
-						cv::Mat matX = cv::Mat_<double>(3, 1);
-
 						
-						bool solveResult =  cv::solve(matA, matB, matX, cv::DECOMP_SVD | cv::DECOMP_NORMAL);
-						
-						if (solveResult)
-						{
-							double realX = matX.at<double>(0, 0);
-							double realY = matX.at<double>(1, 0);
-							double realSigma = matX.at<double>(2, 0);
-
-							int realPos = (int)(realY * width + realX);
-							if (realPos < 0)
-								realPos = 0;
-							else if (realPos >= imgSize)
-								realPos = imgSize - 1;
-
-							imgMark[realPos] = 1;
-						}*/
-
+						if (!locateRefine(A, B, secondLine, width, height))
+							continue;
+#endif					
+						// mark the point as interest point
 						imgMark[secondLine] = 1;
 					}
-					else
-					{
-						imgMark[secondLine] = 0;
-					}
-
 #elif
 					if ((pMid11 > pMid00) && (pMid11 > pMid01) && (pMid11 > pMid02) && (pMid11 > pMid10)
 						&& (pMid11 > pMid12) && (pMid11 > pMid20) && (pMid11 > pMid21) && (pMid11 > pMid22)
@@ -469,40 +469,8 @@ int height
 						&& (pMid11 > pUp11) && (pMid11 > pUp12) && (pMid11 > pUp20) && (pMid11 > pUp21)&& (pMid11 > pUp22) 
 						&& (pMid11 > pDown00) && (pMid11 > pDown01) && (pMid11 > pDown02) && (pMid11 > pDown10) && (pMid11 > pDown11) && (pMid11 > pDown12) && (pMid11 > pDown20) && (pMid11 > pDown21) && (pMid11 > pDown22))
 					{
-						/*A[0] = pMid10 + pMid12 - 2 * pMid11;
-						A[1] = (pMid00 + pMid22 - pMid02 - pMid20) / 4;
-						A[2] = (pUp10 + pDown12 - pUp12 - pDown10) / 4;
-						A[3] = A[1];
-						A[4] = pMid01 + pMid21 - 2 * pMid11;
-						A[5] = (pUp12 + pDown21 - pUp21 - pDown12) / 4;
-						A[6] = A[2];
-						A[7] = A[5];
-						A[8] = pUp11 + pDown11 - 2 * pMid11;
-
-						B[0] = -(pMid12 - pMid10) / 2;
-						B[1] = -(pMid21 - pMid01) / 2;
-						B[2] = -(pDown11 - pUp11) / 2;
-
-						solve3_3(A, B, result);
-
-						double realX = result[0];
-						double realY = result[1];
-						double realSigma = result[2];
-						int realPos = (int)(realY * width + realX);
-						if (realPos < 0)
-							realPos = 0;
-						else if (realPos >= imgSize)
-							realPos = imgSize - 1;
-
-						imgMark[realPos] = 1;*/
-
 						imgMark[secondLine] = 1;
 					}
-					else
-					{
-						imgMark[secondLine] = 0;
-					}
-
 #endif
 				}
 			}
@@ -511,22 +479,45 @@ int height
 }
 
 
-/*Conduct accurate sub-pixel interest point location & edge suppression & threshold suppression*/
-int
+/*Conduct accurate sub-pixel interest point location*/
+bool
 locateRefine
 (
-double* imgHesPyr,
-int octaveNum,
-int layerNum,
-const int* hesTempl,
-double fxThresh,
-double edgeThresh,
-unsigned char* imgMark
+double A[],
+double B[],
+int& pointSeq,
+int width,
+int height
 )
 {
-	int interPointN = 0;
+	int imgSize = width * height;
 
-	return interPointN;
+	// form the matrix format of the efficients and variables
+	cv::Mat matA = (cv::Mat_<double>(3, 3) << A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7], A[8]);
+	cv::Mat matB = (cv::Mat_<double>(3, 1) << B[0], B[1], B[2]);
+	cv::Mat matX = cv::Mat_<double>(3, 1);
+
+	// Use openCV method to calculate linear nonhomogeneous equations
+	bool solveResult =  cv::solve(matA, matB, matX, cv::DECOMP_SVD | cv::DECOMP_NORMAL);
+
+	// if result is 
+	if (solveResult)
+	{
+		// calculate the real sub-pixel position
+		double realX = matX.at<double>(0, 0);
+		double realY = matX.at<double>(1, 0);
+		double realSigma = matX.at<double>(2, 0);
+
+		pointSeq = (int)(realY * width + realX);
+		
+		// prevent posssible over boundary
+		if (pointSeq < 0)
+			pointSeq = 0;
+		else if (pointSeq >= imgSize)
+			pointSeq = imgSize - 1;
+	}
+
+	return solveResult;
 }
 
 
@@ -572,9 +563,8 @@ double thresh
 	// Step 3: Conduct non-maximum suppression
 	suppressNonMaximum(imgHesPyr, octaveNum, layerNum, g_hessin_template, imgMark, width, height);
 
-	// Step 4: Conduct accurate sub-pixel interest point location,edge & threshold suppression
-	int interPointNum = locateRefine(imgHesPyr, octaveNum, layerNum, g_hessin_template, 0.3, 10, imgMark);
-
+	// Step 4: Mark the last remained marked interest points
+	int interPointNum = 0;
 	for (int i = 0; i < fullSize; ++i, ++imgMark)
 	{
 		if (*imgMark = *imgMark * imgMarkTmp[i])

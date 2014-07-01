@@ -6,10 +6,10 @@
 
 
 typedef struct _MATCH_COUPLE {
-	short Lx;
-	short Ly;
-	short Rx;
-	short Ry;
+	int Lx;
+	int Ly;
+	int Rx;
+	int Ry;
 }MatchCouple, *pMatchCouple;
 
 

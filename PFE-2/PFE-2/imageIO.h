@@ -9,27 +9,28 @@
 #include "stdfunc.h"
 
 
-
-std::pair<cv::Mat, cv::Mat>
-displayInit
-(
-std::string leftImgStr,
-std::string rightImgStr,
-std::string mergeImgStr
-);
-
-
+/*Draw cross at the interest points at matched images*/
 void
 drawCross
 (
-uchar* img, 
-uchar* imgMark, 
-uchar len, 
-short width, 
+uchar* img,
+uchar* imgMark,
+uchar len,
+short width,
 short height
 );
 
 
+/*Display the initial images*/
+std::pair<cv::Mat, cv::Mat>
+displayInit
+(
+std::pair<std::string, std::string> srcFilePair,
+std::string mergeImgStr
+);
+
+
+/*Display the result images*/
 void
 displayResult
 (
@@ -37,7 +38,6 @@ std::pair<cv::Mat, cv::Mat> imgPair,
 std::pair<unsigned char*, unsigned char*> imgMarkPair,
 pMatchCouple couple,
 int matchNum,
-std::string leftResultStr,
-std::string rightResultStr,
+std::pair<std::string, std::string> dstFilePair,
 std::string mergeResultStr
 );

@@ -8,6 +8,7 @@
 
 
 #define _CIRCLR_NEIGHBOUR 1
+#define _LOCATE_REFINE	0
 
 
 /*get the template to generate hessin pyramids*/
@@ -70,16 +71,14 @@ int height
 
 
 /*Conduct accurate sub-pixel interest point location & edge suppression & threshold suppression*/
-int
+bool
 locateRefine
 (
-double* imgHesPyr,
-int octaveNum,
-int layerNum,
-const int* hesTempl,
-double fxThresh,
-double edgeThresh,
-unsigned char* imgMark
+double A[],
+double B[],
+int& pointSeq,
+int width,
+int height
 );
 
 

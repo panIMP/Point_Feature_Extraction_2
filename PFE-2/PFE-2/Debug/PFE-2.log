@@ -1,12 +1,8 @@
-﻿  zernikeMatch.cpp
-  zernike.cpp
-  stdfunc.cpp
-  pointLocate.cpp
+﻿  pointLocate.cpp
 e:\git\point-feature-extraction-2\pfe-2\pfe-2\pointlocate.cpp(52): warning C4244: “初始化”: 从“double”转换到“const int”，可能丢失数据
+  正在生成代码...
+  正在编译...
   main.cpp
-  imageIO.cpp
-  huMatch.cpp
-e:\git\point-feature-extraction-2\pfe-2\pfe-2\humatch.cpp(292): warning C4244: “=”: 从“double”转换到“short”，可能丢失数据
-e:\git\point-feature-extraction-2\pfe-2\pfe-2\humatch.cpp(293): warning C4244: “=”: 从“double”转换到“short”，可能丢失数据
+e:\git\point-feature-extraction-2\pfe-2\pfe-2\main.cpp(65): warning C4244: “初始化”: 从“double”转换到“int”，可能丢失数据
   正在生成代码...
   PFE-2.vcxproj -> E:\Git\Point-Feature-Extraction-2\PFE-2\Debug\PFE-2.exe
